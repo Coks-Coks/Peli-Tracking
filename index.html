@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Peli-Tracking</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <img src="pelichet_logo.jpg" alt="Logo Pelichet" />
+    <h1>Peli-Tracking</h1>
+  </header>
+
+  <div class="controls">
+    <label for="date">Date :</label>
+    <input type="date" id="date" />
+    <label for="arrival">Heure d’arrivée :</label>
+    <input type="time" id="arrival" />
+    <label for="departure">Heure de départ :</label>
+    <input type="time" id="departure" />
+    <button onclick="saveHours()">Enregistrer</button>
+  </div>
+
+  <section id="historySection">
+    <h2>📊 Historique de la semaine</h2>
+    <div id="history"></div>
+  </section>
+
+  <section id="monthSection">
+    <h2>📅 Historique du mois</h2>
+    <label for="monthSelect">Mois :</label>
+    <select id="monthSelect" onchange="renderMonth()"></select>
+
+    <div id="monthlyHistory"></div>
+    <div id="monthlyTotal"></div>
+
+    <canvas id="chartCanvas" width="800" height="400"></canvas>
+    <div id="annualTotal"></div>
+
+    <button onclick="exportCSV()">📤 Exporter CSV</button>
+    <input type="file" accept=".csv" onchange="importCSV(event)" />
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
