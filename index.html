@@ -2,95 +2,87 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Peli-Tracking</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=3">
-  <script src="script.js?v=3"></script>
-  <!-- PWA -->
-<link rel="manifest" href="manifest.webmanifest" />
-<meta name="theme-color" content="#E97132" />
 
-<!-- iOS (améliore l’expérience sur iPhone/iPad) -->
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Couleurs navigateur (Android) -->
+  <meta name="theme-color" content="#E97132" />
 
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.webmanifest" />
+
+  <!-- Styles (avec version pour éviter le cache) -->
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
 <body>
   <header>
-    <img src="pelichet_logo.jpg" alt="Logo Pelichet" />
+    <!-- Logo d’entête (fichier du repo) -->
+    <img src="pelichet_logo.jpg" alt="Pelichet Logo" />
     <h1>Peli-Tracking</h1>
   </header>
 
+  <!-- Saisie -->
   <div class="controls">
     <label for="date">Date :</label>
     <input type="date" id="date" />
+
     <label for="arrival">Heure d’arrivée :</label>
     <input type="time" id="arrival" />
+
     <label for="departure">Heure de départ :</label>
     <input type="time" id="departure" />
+
     <button onclick="saveHours()">Enregistrer</button>
   </div>
 
+  <!-- Historique SEMAINE (détail par jour) -->
   <section id="historySection">
     <h2>📊 Historique de la semaine</h2>
+    <div id="weeklyTotal"></div>
     <div id="history"></div>
   </section>
 
+  <!-- Historique MOIS (groupé par semaines) -->
   <section id="monthSection">
     <h2>📅 Historique du mois</h2>
+
     <label for="monthSelect">Mois :</label>
     <select id="monthSelect" onchange="renderMonth()"></select>
 
-    <div id="monthlyHistory"></div>
     <div id="monthlyTotal"></div>
+    <div id="monthlyHistory"></div>
 
-    <canvas id="chartCanvas" width="800" height="400"></canvas>
+    <!-- Graphique du mois -->
+    <div id="totalsAboveChart"></div>
+    <canvas id="chartCanvas" width="900" height="420"></canvas>
+    <div id="totalsBelowChart"></div>
+  </section>
+
+  <!-- Historique ANNEE (groupé par mois → semaines) -->
+  <section id="yearSection">
+    <h2>🗓️ Historique de l’année</h2>
     <div id="annualTotal"></div>
+    <div id="yearHistory"></div>
+  </section>
 
+  <!-- CSV -->
+  <section style="padding: 0 20px 30px;">
     <button onclick="exportCSV()">📤 Exporter CSV</button>
     <input type="file" accept=".csv" onchange="importCSV(event)" />
   </section>
 
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="script.js"></script>
+
+  <!-- Script (avec version pour éviter le cache) -->
+  <script src="script.js?v=4"></script>
+
   <!-- Enregistrement du Service Worker -->
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js', { scope: './' })
-      .then(() => console.log('Service Worker enregistré ✅'))
-      .catch(console.error);
-  }
-</script>
-
-<!-- Bouton “Installer l’appli” (Android/Chrome) -->
-<button id="installBtn" hidden style="position:fixed; right:16px; bottom:16px;">Installer l’appli</button>
-<script>
-  let deferredPrompt;
-  const btn = document.getElementById('installBtn');
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    btn.hidden = false; // on affiche le bouton
-  });
-
-  btn.addEventListener('click', async () => {
-    btn.hidden = true;
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log('Installation:', outcome);
-    deferredPrompt = null;
-  });
-
-  // Optionnel : cacher le bouton si déjà installé
-  window.addEventListener('appinstalled', () => {
-    console.log('PWA installée 🎉');
-    btn.hidden = true;
-  });
-</script>
-
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker enregistré'));
+    }
+  </script>
 </body>
 </html>
