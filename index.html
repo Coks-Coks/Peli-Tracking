@@ -6,6 +6,15 @@
   <title>Peli-Tracking</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css" />
+  <!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#E97132" />
+
+<!-- iOS (améliore l’expérience sur iPhone/iPad) -->
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 </head>
 <body>
   <header>
@@ -45,5 +54,42 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="script.js"></script>
+  <!-- Enregistrement du Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(() => console.log('Service Worker enregistré ✅'))
+      .catch(console.error);
+  }
+</script>
+
+<!-- Bouton “Installer l’appli” (Android/Chrome) -->
+<button id="installBtn" hidden style="position:fixed; right:16px; bottom:16px;">Installer l’appli</button>
+<script>
+  let deferredPrompt;
+  const btn = document.getElementById('installBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    btn.hidden = false; // on affiche le bouton
+  });
+
+  btn.addEventListener('click', async () => {
+    btn.hidden = true;
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log('Installation:', outcome);
+    deferredPrompt = null;
+  });
+
+  // Optionnel : cacher le bouton si déjà installé
+  window.addEventListener('appinstalled', () => {
+    console.log('PWA installée 🎉');
+    btn.hidden = true;
+  });
+</script>
+
 </body>
 </html>
