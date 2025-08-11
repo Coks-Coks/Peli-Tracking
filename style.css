@@ -1,7 +1,7 @@
 body {
+  background-color: #ffffff; /* blanc pur */
+  margin: 0;
   font-family: Arial, sans-serif;
-  background-color: #f4f4f4;
-  padding: 20px;
 }
 
 header {
@@ -11,7 +11,8 @@ header {
 }
 
 header img {
-  height: 40px;
+  max-height: 100px;
+  width: auto
   margin-right: 15px;
 }
 
