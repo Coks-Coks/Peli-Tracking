@@ -1,35 +1,45 @@
-// Base GitHub Pages
+// Service Worker pour Peli-Tracking (GitHub Pages sous /Peli-Tracking/)
 const BASE = '/Peli-Tracking/';
-
-// Bump de version pour forcer la mise à jour des fichiers (tes données restent en localStorage)
-const CACHE_NAME = 'peli-tracking-v7';
-
+const CACHE_NAME = 'peli-tracking-v6'; // <- incrémentez si vous mettez à jour
 const ASSETS = [
   BASE,
   BASE + 'index.html',
-  BASE + 'style.css?v=7',
-  BASE + 'script.js?v=7',
+  BASE + 'style.css?v=6',
+  BASE + 'script.js?v=6',
   BASE + 'manifest.webmanifest',
   BASE + 'icon-192.png',
   BASE + 'icon-512.png',
   BASE + 'pelichet_logo.jpg'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS))
+  );
+  // Prendre la main immédiatement
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(k => (k !== CACHE_NAME ? caches.delete(k) : null)))
-    )
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : undefined)))
+    ).then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  // On respecte la query string (v=7)
-  event.respondWith(
-    caches.match(event.request).then(resp => resp || fetch(event.request))
+// Network-first pour éviter les vieux caches, mais fallback au cache si offline
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+
+  // On laisse passer les requêtes hors scope
+  if (new URL(req.url).pathname.indexOf(BASE) !== 0) return;
+
+  e.respondWith(
+    fetch(req).then((res) => {
+      const clone = res.clone();
+      caches.open(CACHE_NAME).then((c) => c.put(req, clone));
+      return res;
+    }).catch(() => caches.match(req))
   );
 });

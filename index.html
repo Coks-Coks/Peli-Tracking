@@ -5,41 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Peli-Tracking</title>
 
-  <!-- Couleur barre Android -->
+  <!-- Couleurs navigateur -->
   <meta name="theme-color" content="#E97132" />
 
-  <!-- Manifest PWA -->
-  <link rel="manifest" href="manifest.webmanifest" />
+  <!-- iOS (au cas où) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-  <!-- Styles (versionnés pour casser le cache) -->
-  <link rel="stylesheet" href="style.css?v=7" />
+  <!-- Manifest + styles versionnés -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <header>
     <img src="pelichet_logo.jpg" alt="Pelichet Logo" />
     <h1>Peli-Tracking</h1>
+
+    <!-- Bouton "Installer l’application" (affiché automatiquement si possible) -->
+    <button id="installBtn" style="margin-left:auto; display:none;">Installer</button>
   </header>
 
+  <!-- Saisie -->
   <div class="controls">
     <label for="date">Date :</label>
     <input type="date" id="date" />
+
     <label for="arrival">Heure d’arrivée :</label>
     <input type="time" id="arrival" />
+
     <label for="departure">Heure de départ :</label>
     <input type="time" id="departure" />
+
     <button onclick="saveHours()">Enregistrer</button>
   </div>
 
+  <!-- Historique SEMAINE -->
   <section id="historySection">
     <h2>📊 Historique de la semaine</h2>
     <div id="weeklyTotal"></div>
     <div id="history"></div>
   </section>
 
+  <!-- Historique MOIS -->
   <section id="monthSection">
     <h2>📅 Historique du mois</h2>
     <label for="monthSelect">Mois :</label>
     <select id="monthSelect" onchange="renderMonth()"></select>
+
     <div id="monthlyTotal"></div>
     <div id="monthlyHistory"></div>
 
@@ -48,42 +60,64 @@
     <div id="totalsBelowChart"></div>
   </section>
 
+  <!-- Historique ANNÉE -->
   <section id="yearSection">
     <h2>🗓️ Historique de l’année</h2>
     <div id="annualTotal"></div>
     <div id="yearHistory"></div>
   </section>
 
+  <!-- CSV -->
   <section style="padding: 0 20px 30px;">
     <button onclick="exportCSV()">📤 Exporter CSV</button>
     <input type="file" accept=".csv" onchange="importCSV(event)" />
-    <!-- Sauvegarde/restauration JSON (optionnel, utile avant nettoyage) -->
-    <button onclick="exportJSON()">🛟 Export JSON</button>
-    <input type="file" accept="application/json" onchange="importJSON(event)" />
   </section>
 
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="script.js?v=7"></script>
 
-  <!-- ENREGISTREMENT DU SERVICE WORKER AVEC LE BON SCOPE -->
+  <!-- App logic -->
+  <script src="script.js?v=6"></script>
+
+  <!-- Enregistrement SW (avec scope explicite GitHub Pages) -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/Peli-Tracking/sw.js', { scope: '/Peli-Tracking/' })
-        .then(r => console.log('SW OK scope =', r.scope))
+        .then(() => console.log('Service Worker enregistré ✅'))
         .catch(console.error);
     }
 
-    // Badge debug: ajoute ?debug=1 à l’URL pour l’afficher
-    (function(){
-      const url = new URL(location.href);
-      if (url.searchParams.get('debug') === '1') {
-        const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-        const d = document.createElement('div');
-        d.textContent = 'Mode: ' + (standalone ? 'standalone/fullscreen' : 'browser tab');
-        d.style.cssText='position:fixed;right:12px;bottom:12px;background:#000;color:#fff;padding:6px 10px;border-radius:8px;font:12px Arial;opacity:.75;z-index:9999';
-        document.body.appendChild(d);
+    // === Forcer l'apparition "Installer l'application" ===
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('installBtn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Empêche le mini-infobar et garde l'évènement
+      e.preventDefault();
+      deferredPrompt = e;
+      // Montre le bouton
+      installBtn.style.display = 'inline-block';
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      installBtn.disabled = true;
+      try {
+        const outcome = await deferredPrompt.prompt();
+        console.log('Install prompt outcome:', outcome.outcome || outcome);
+      } catch (err) {
+        console.warn(err);
+      } finally {
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+        installBtn.disabled = false;
       }
-    })();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA installée 🎉');
+      installBtn.style.display = 'none';
+    });
   </script>
 </body>
 </html>
