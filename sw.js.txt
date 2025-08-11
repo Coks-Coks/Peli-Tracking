@@ -1,11 +1,11 @@
-// Service Worker pour Peli-Tracking (GitHub Pages sous /Peli-Tracking/)
 const BASE = '/Peli-Tracking/';
-const CACHE_NAME = 'peli-tracking-v6'; // <- incrémentez si vous mettez à jour
+const CACHE_NAME = 'peli-tracking-v9';
+
 const ASSETS = [
   BASE,
   BASE + 'index.html',
-  BASE + 'style.css?v=6',
-  BASE + 'script.js?v=6',
+  BASE + 'style.css?v=9',
+  BASE + 'script.js?v=9',
   BASE + 'manifest.webmanifest',
   BASE + 'icon-192.png',
   BASE + 'icon-512.png',
@@ -13,33 +13,26 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS))
-  );
-  // Prendre la main immédiatement
+  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : undefined)))
-    ).then(() => self.clients.claim())
+    caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null)))
+      .then(() => self.clients.claim())
   );
 });
 
-// Network-first pour éviter les vieux caches, mais fallback au cache si offline
+// Network-first (pour éviter un vieux HTML/CSS/manifest), fallback au cache si offline
 self.addEventListener('fetch', (e) => {
-  const req = e.request;
-
-  // On laisse passer les requêtes hors scope
-  if (new URL(req.url).pathname.indexOf(BASE) !== 0) return;
-
+  const url = new URL(e.request.url);
+  if (!url.pathname.startsWith(BASE)) return; // hors scope : on laisse passer
   e.respondWith(
-    fetch(req).then((res) => {
+    fetch(e.request).then(res => {
       const clone = res.clone();
-      caches.open(CACHE_NAME).then((c) => c.put(req, clone));
+      caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
       return res;
-    }).catch(() => caches.match(req))
+    }).catch(() => caches.match(e.request))
   );
 });
