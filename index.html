@@ -11,8 +11,8 @@
   <!-- Manifest PWA -->
   <link rel="manifest" href="manifest.webmanifest" />
 
-  <!-- Styles (versionnés) -->
-  <link rel="stylesheet" href="style.css?v=6" />
+  <!-- Styles (versionnés pour casser le cache) -->
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
   <header>
@@ -57,29 +57,33 @@
   <section style="padding: 0 20px 30px;">
     <button onclick="exportCSV()">📤 Exporter CSV</button>
     <input type="file" accept=".csv" onchange="importCSV(event)" />
+    <!-- Sauvegarde/restauration JSON (optionnel, utile avant nettoyage) -->
+    <button onclick="exportJSON()">🛟 Export JSON</button>
+    <input type="file" accept="application/json" onchange="importJSON(event)" />
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="script.js?v=6"></script>
+  <script src="script.js?v=7"></script>
 
-  <!-- ENREGISTREMENT SW avec chemin GitHub Pages -->
+  <!-- ENREGISTREMENT DU SERVICE WORKER AVEC LE BON SCOPE -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/Peli-Tracking/sw.js', { scope: '/Peli-Tracking/' })
-        .then(() => console.log('Service Worker enregistré ✅'))
+        .then(r => console.log('SW OK scope =', r.scope))
         .catch(console.error);
     }
-  </script>
 
-  <!-- (Optionnel) petit badge pour vérifier le mode -->
-  <!--
-  <script>
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-    const b = document.createElement('div');
-    b.textContent = 'Mode: ' + (isStandalone ? 'standalone/fullscreen' : 'browser tab');
-    b.style.cssText='position:fixed;right:12px;bottom:12px;background:#000;color:#fff;padding:6px 10px;border-radius:8px;font:12px Arial;opacity:.7;z-index:9999';
-    document.body.appendChild(b);
+    // Badge debug: ajoute ?debug=1 à l’URL pour l’afficher
+    (function(){
+      const url = new URL(location.href);
+      if (url.searchParams.get('debug') === '1') {
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+        const d = document.createElement('div');
+        d.textContent = 'Mode: ' + (standalone ? 'standalone/fullscreen' : 'browser tab');
+        d.style.cssText='position:fixed;right:12px;bottom:12px;background:#000;color:#fff;padding:6px 10px;border-radius:8px;font:12px Arial;opacity:.75;z-index:9999';
+        document.body.appendChild(d);
+      }
+    })();
   </script>
-  -->
 </body>
 </html>

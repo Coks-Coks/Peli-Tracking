@@ -1,17 +1,18 @@
-// Chemin de base GitHub Pages
+// Base GitHub Pages
 const BASE = '/Peli-Tracking/';
 
-// ⚠️ Incrémente pour forcer l'update des fichiers (sans toucher aux données)
-const CACHE_NAME = 'peli-tracking-v6';
+// Bump de version pour forcer la mise à jour des fichiers (tes données restent en localStorage)
+const CACHE_NAME = 'peli-tracking-v7';
 
 const ASSETS = [
   BASE,
   BASE + 'index.html',
-  BASE + 'style.css?v=6',
-  BASE + 'script.js?v=6',
+  BASE + 'style.css?v=7',
+  BASE + 'script.js?v=7',
   BASE + 'manifest.webmanifest',
   BASE + 'icon-192.png',
-  BASE + 'icon-512.png'
+  BASE + 'icon-512.png',
+  BASE + 'pelichet_logo.jpg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -27,7 +28,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // On respecte la query string (v=6) -> pas de ignoreSearch
+  // On respecte la query string (v=7)
   event.respondWith(
     caches.match(event.request).then(resp => resp || fetch(event.request))
   );

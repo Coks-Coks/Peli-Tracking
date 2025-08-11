@@ -1,13 +1,10 @@
 window.addEventListener("DOMContentLoaded", function () {
-  // ---------- Constantes ----------
-  const THEO_HOURS_PER_DAY = 8.5;            // 8h30 en décimal
+  const THEO_HOURS_PER_DAY = 8.5;
   const THEO_WEEKLY_TOTAL  = 5 * THEO_HOURS_PER_DAY;
 
-  // ---------- Helpers stockage ----------
   const getStoredData = () => JSON.parse(localStorage.getItem("heures") || "{}");
   const saveStoredData = (d) => localStorage.setItem("heures", JSON.stringify(d));
 
-  // ---------- Helpers affichage ----------
   const toHourFormat = (value) => {
     const h = Math.floor(Math.abs(value));
     const m = Math.round((Math.abs(value) - h) * 60);
@@ -17,7 +14,6 @@ window.addEventListener("DOMContentLoaded", function () {
   const spanDelta = (value) =>
     `<span class="delta ${value >= 0 ? "plus" : "minus"}">${formatSignedHours(value)}</span>`;
 
-  // ---------- Helpers dates ----------
   function getWeekDates() {
     const now = new Date();
     const monday = new Date(now);
@@ -33,7 +29,6 @@ window.addEventListener("DOMContentLoaded", function () {
   const getDayName = (dateStr) =>
     ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][new Date(dateStr).getDay()];
 
-  // ISO week key "YYYY-Www"
   function getISOWeekKey(dateStr) {
     const d = new Date(dateStr);
     d.setHours(0,0,0,0);
@@ -53,11 +48,9 @@ window.addEventListener("DOMContentLoaded", function () {
     return `${mois[parseInt(m,10)-1]} ${y}`;
   }
 
-  // ---------- Init date du jour ----------
   const dateInput = document.getElementById("date");
   if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
 
-  // ---------- CRUD journée ----------
   function saveHours() {
     const date = document.getElementById("date").value;
     const arrival = document.getElementById("arrival").value;
@@ -93,7 +86,6 @@ window.addEventListener("DOMContentLoaded", function () {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // ---------- SEMAINE ----------
   function renderWeek() {
     const data = getStoredData();
     const weekDates = getWeekDates();
@@ -127,7 +119,6 @@ window.addEventListener("DOMContentLoaded", function () {
     if (historyDiv) historyDiv.innerHTML = html;
   }
 
-  // ---------- Sélecteur Mois ----------
   function populateMonthSelect() {
     const data = getStoredData();
     const select = document.getElementById("monthSelect");
@@ -144,7 +135,6 @@ window.addEventListener("DOMContentLoaded", function () {
     if (months.has(current)) select.value = current;
   }
 
-  // ---------- MOIS (groupé par semaines) ----------
   let myChart;
   function drawChart(labels, below, base, over) {
     const canvas = document.getElementById("chartCanvas");
@@ -171,7 +161,6 @@ window.addEventListener("DOMContentLoaded", function () {
     const ym = select.value;
     const data = getStoredData();
 
-    // Grouper par semaine ISO
     const groups = {};
     let monthTotal = 0; let workedDays = 0;
 
@@ -180,14 +169,13 @@ window.addEventListener("DOMContentLoaded", function () {
     Object.keys(data).filter(d => d.startsWith(ym)).sort().forEach(date => {
       const e = data[date];
       const dow = new Date(date).getDay();
-      if (dow < 1 || dow > 5) return; // Lun-Ven
+      if (dow < 1 || dow > 5) return;
 
       const wk = getISOWeekKey(date);
       (groups[wk] ||= []).push({ date, ...e });
 
       monthTotal += e.workedHours; workedDays++;
 
-      // graph jour par jour
       chartLabels.push(date);
       if (e.workedHours < THEO_HOURS_PER_DAY) {
         below.push(e.workedHours); base.push(0); over.push(0);
@@ -196,7 +184,6 @@ window.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // Résumé du mois
     const theoMonth = workedDays * THEO_HOURS_PER_DAY;
     const monthDelta = monthTotal - theoMonth;
     const monthlyTotalDiv = document.getElementById("monthlyTotal");
@@ -206,7 +193,6 @@ window.addEventListener("DOMContentLoaded", function () {
         `<strong>Écart :</strong> ${spanDelta(monthDelta)}`;
     }
 
-    // Collapsibles semaines
     const monthlyHistory = document.getElementById("monthlyHistory");
     if (monthlyHistory) {
       monthlyHistory.innerHTML = Object.keys(groups).sort().map(isoWk => {
@@ -236,11 +222,10 @@ window.addEventListener("DOMContentLoaded", function () {
     renderYear();
   }
 
-  // ---------- ANNUEL (groupé par mois → semaines) ----------
   function renderYear() {
     const data = getStoredData();
     const yearNow = new Date().getFullYear();
-    const perMonth = {}; // { 'YYYY-MM': { 'YYYY-Www': [entries...] } }
+    const perMonth = {};
 
     Object.keys(data).sort().forEach(date => {
       const d = new Date(date);
@@ -259,7 +244,6 @@ window.addEventListener("DOMContentLoaded", function () {
     if (!yearHistory) return;
 
     yearHistory.innerHTML = Object.keys(perMonth).sort().map(ym => {
-      // résumé du mois
       const weeks = perMonth[ym];
       let monthWorked = 0, monthTheo = 0;
 
@@ -294,7 +278,6 @@ window.addEventListener("DOMContentLoaded", function () {
     }).join("") || "<div class='entry-line'>Aucune donnée pour cette année.</div>";
   }
 
-  // ---------- Total annuel global ----------
   function renderAnnualTotal() {
     const data = getStoredData();
     let total = 0, workdayCount = 0;
@@ -316,7 +299,7 @@ window.addEventListener("DOMContentLoaded", function () {
       `<strong>Écart :</strong> ${spanDelta(delta)}`;
   }
 
-  // ---------- Export / Import CSV ----------
+  // CSV
   function exportCSV() {
     const data = getStoredData();
     const rows = [["Date","Heure arrivée","Heure départ","Heures travaillées (h déc)","Écart (h déc)"]];
@@ -350,15 +333,41 @@ window.addEventListener("DOMContentLoaded", function () {
     reader.readAsText(file);
   }
 
-  // ---------- Expose ----------
+  // Sauvegarde JSON simple (utile avant nettoyage du site)
+  function exportJSON(){
+    const data = getStoredData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "peli-tracking-backup.json";
+    a.click();
+  }
+  function importJSON(event){
+    const f = event.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = e => {
+      try{
+        const data = JSON.parse(e.target.result);
+        saveStoredData(data);
+        renderWeek(); populateMonthSelect(); renderMonth(); renderYear(); renderAnnualTotal();
+        alert("Import JSON OK ✅");
+      }catch(err){ alert("Fichier invalide"); }
+    };
+    r.readAsText(f);
+  }
+
+  // expose
   window.saveHours = saveHours;
   window.deleteDay = deleteDay;
   window.modifyDay = modifyDay;
   window.renderMonth = renderMonth;
   window.exportCSV = exportCSV;
   window.importCSV = importCSV;
+  window.exportJSON = exportJSON;
+  window.importJSON = importJSON;
 
-  // ---------- Démarrage ----------
+  // init
   renderWeek();
   populateMonthSelect();
   renderMonth();
