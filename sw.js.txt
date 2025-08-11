@@ -1,11 +1,11 @@
 const BASE = '/Peli-Tracking/';
-const CACHE_NAME = 'peli-tracking-v10';
+const CACHE_NAME = 'peli-tracking-v11';
 
 const ASSETS = [
   BASE,
   BASE + 'index.html',
-  BASE + 'style.css?v=10',
-  BASE + 'script.js?v=10',
+  BASE + 'style.css?v=11',
+  BASE + 'script.js?v=11',
   BASE + 'manifest.webmanifest',
   BASE + 'icon-192.png',
   BASE + 'icon-512.png',

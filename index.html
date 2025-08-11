@@ -9,8 +9,12 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#E97132" />
 
+  <!-- Favicon/icone (aide Android à capter l’icone) -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
   <!-- Styles versionnés -->
-  <link rel="stylesheet" href="style.css?v=10" />
+  <link rel="stylesheet" href="style.css?v=11" />
 </head>
 <body>
   <header>
@@ -77,13 +81,20 @@
   <!-- Toast -->
   <div id="flash" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- DIAGNOSTIC PWA -->
+  <section id="pwaDiag" style="margin:18px 20px; padding:12px; border:1px dashed #ccc; border-radius:10px;">
+    <h3>🔧 Diagnostic PWA</h3>
+    <div id="diagContent">Chargement…</div>
+    <button id="resetPwaBtn" style="margin-top:10px;">♻️ Réinitialiser le cache PWA (sans effacer mes heures)</button>
+  </section>
+
   <!-- Lib chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <!-- App -->
-  <script src="script.js?v=10"></script>
+  <script src="script.js?v=11"></script>
 
-  <!-- Service Worker (scope GitHub Pages) + bouton Installer -->
+  <!-- Service Worker (scope GitHub Pages) + bouton Installer + Diag -->
   <script>
     // Enregistre le SW sous le bon scope (/Peli-Tracking/)
     if ('serviceWorker' in navigator) {
@@ -118,6 +129,38 @@
     window.addEventListener('appinstalled', () => {
       installBtn.style.display='none';
       console.log('PWA installée 🎉');
+    });
+
+    // === DIAGNOSTIC PWA ===
+    async function diag() {
+      const hasSW = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+      const modeStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+      const manifestResp = await fetch('manifest.webmanifest', {cache:'no-cache'}).then(r => ({ok:r.ok, type:r.headers.get('content-type')})).catch(()=>({ok:false,type:'-'}));
+      const diagDiv = document.getElementById('diagContent');
+      diagDiv.innerHTML = `
+        URL: <code>${location.href}</code><br>
+        Mode d’affichage: <b>${modeStandalone ? 'standalone (OK, pas de barre URL si lancé depuis icône)' : 'navigateur'}</b><br>
+        Service Worker contrôleur: <b>${hasSW ? 'OUI' : 'NON'}</b><br>
+        Manifest chargé: <b>${manifestResp.ok ? 'OUI' : 'NON'}</b> (type=${manifestResp.type || 'n/a'})<br>
+        beforeinstallprompt capturé: <b>${deferredPrompt ? 'OUI' : 'NON'}</b><br>
+      `;
+    }
+    diag();
+
+    // Bouton reset PWA (n’efface PAS localStorage)
+    document.getElementById('resetPwaBtn').addEventListener('click', async ()=>{
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        alert('Caches PWA et SW réinitialisés. Recharge la page 2 fois, puis réinstalle.');
+        location.reload(true);
+      } catch(e){ alert('Reset erreur: ' + e); }
     });
   </script>
 </body>
