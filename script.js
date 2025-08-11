@@ -1,19 +1,31 @@
 window.addEventListener("DOMContentLoaded", function () {
-  const THEO_HOURS_PER_DAY = 8.5;
+  // --- Constantes ---
+  const THEO_HOURS_PER_DAY = 8.5;            // 8h30 en décimal
   const THEO_WEEKLY_TOTAL  = 5 * THEO_HOURS_PER_DAY;
 
+  // --- Stockage ---
   const getStoredData = () => JSON.parse(localStorage.getItem("heures") || "{}");
   const saveStoredData = (d) => localStorage.setItem("heures", JSON.stringify(d));
 
+  // --- Format heures h:mm & écart signé ---
   const toHourFormat = (value) => {
     const h = Math.floor(Math.abs(value));
     const m = Math.round((Math.abs(value) - h) * 60);
     return `${h}h${String(m).padStart(2, "0")}`;
   };
-  const formatSignedHours = (value) => (value >= 0 ? "+" : "-") + toHourFormat(value);
-  const spanDelta = (value) =>
-    `<span class="delta ${value >= 0 ? "plus" : "minus"}">${formatSignedHours(value)}</span>`;
+  const formatSignedHours = (v) => (v >= 0 ? "+" : "-") + toHourFormat(v);
+  const spanDelta = (v) => `<span class="delta ${v >= 0 ? "plus" : "minus"}">${formatSignedHours(v)}</span>`;
 
+  // --- Helpers date/heure ---
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const nowHM = () => {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mm = String(d.getMinutes()).padStart(2,"0");
+    return `${hh}:${mm}`;
+  };
+  const getDayName = (dateStr) =>
+    ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][new Date(dateStr).getDay()];
   function getWeekDates() {
     const now = new Date();
     const monday = new Date(now);
@@ -26,9 +38,6 @@ window.addEventListener("DOMContentLoaded", function () {
     }
     return dates;
   }
-  const getDayName = (dateStr) =>
-    ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][new Date(dateStr).getDay()];
-
   function getISOWeekKey(dateStr) {
     const d = new Date(dateStr);
     d.setHours(0,0,0,0);
@@ -48,9 +57,20 @@ window.addEventListener("DOMContentLoaded", function () {
     return `${mois[parseInt(m,10)-1]} ${y}`;
   }
 
+  // --- Init champ date ---
   const dateInput = document.getElementById("date");
-  if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+  if (dateInput) dateInput.value = todayISO();
 
+  // --- Toast (récap éphémère) ---
+  const flash = (msg) => {
+    const el = document.getElementById("flash");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2200);
+  };
+
+  // --- Enregistrer manuel (arrivée + départ) ---
   function saveHours() {
     const date = document.getElementById("date").value;
     const arrival = document.getElementById("arrival").value;
@@ -60,32 +80,74 @@ window.addEventListener("DOMContentLoaded", function () {
     const data = getStoredData();
     if (data[date] && !confirm("Une entrée existe déjà pour ce jour. Modifier ?")) return;
 
-    const start = new Date(`1970-01-01T${arrival}`);
-    const end   = new Date(`1970-01-01T${departure}`);
-    const diffHours = (end - start) / 1000 / 60 / 60;
-    const workedHours = Number((diffHours - 1).toFixed(3)); // -1h pause
-    const delta = Number((workedHours - THEO_HOURS_PER_DAY).toFixed(3));
-    data[date] = { arrival, departure, workedHours, delta };
+    writeEntry(date, arrival, departure, true);
+    flash(`✅ Enregistré ${date} : ${arrival} → ${departure}`);
+  }
+
+  // --- Bouton rapide : pointer arrivée (heure instantanée) ---
+  function punchIn() {
+    const date = todayISO();
+    const time = nowHM();
+    const data = getStoredData();
+    const entry = data[date] || {};
+    if (entry.arrival && !confirm(`Arrivée déjà enregistrée à ${entry.arrival}. Remplacer par ${time} ?`)) {
+      return;
+    }
+    writeEntry(date, time, entry.departure || "", false);
+    document.getElementById("date").value = date;
+    document.getElementById("arrival").value = time;
+    flash(`🟢 Arrivée enregistrée à ${time}`);
+  }
+
+  // --- Bouton rapide : pointer départ (heure instantanée) ---
+  function punchOut() {
+    const date = todayISO();
+    const time = nowHM();
+    const data = getStoredData();
+    const entry = data[date];
+    if (!entry || !entry.arrival) {
+      alert("Aucune arrivée enregistrée aujourd’hui. Pointe d’abord l’arrivée.");
+      return;
+    }
+    if (entry.departure && !confirm(`Déjà enregistré à ${entry.departure}. Remplacer par ${time} ?`)) {
+      return;
+    }
+    writeEntry(date, entry.arrival, time, false);
+    document.getElementById("date").value = date;
+    document.getElementById("departure").value = time;
+    flash(`🔵 Départ enregistré à ${time}`);
+  }
+
+  // --- Écrit/Met à jour une entrée + recalcule worked/delta si possible ---
+  function writeEntry(date, arrival, departure, confirmOverwrite) {
+    const data = getStoredData();
+    const prev = data[date];
+
+    if (prev && confirmOverwrite === true) {
+      if (!confirm("Confirmer la modification de cette journée ?")) return;
+    }
+
+    let workedHours = prev?.workedHours ?? 0;
+    let delta = prev?.delta ?? 0;
+
+    if (arrival && departure) {
+      const start = new Date(`1970-01-01T${arrival}`);
+      const end   = new Date(`1970-01-01T${departure}`);
+      const diffHours = (end - start) / 1000 / 60 / 60;
+      workedHours = Number((diffHours - 1).toFixed(3)); // -1h pause
+      delta = Number((workedHours - THEO_HOURS_PER_DAY).toFixed(3));
+    } else {
+      workedHours = prev?.workedHours ?? 0;
+      delta = prev?.delta ?? 0;
+    }
+
+    data[date] = { arrival: arrival || prev?.arrival || "", departure: departure || prev?.departure || "", workedHours, delta };
     saveStoredData(data);
 
     renderWeek(); populateMonthSelect(); renderMonth(); renderYear(); renderAnnualTotal();
   }
-  function deleteDay(date) {
-    if (!confirm(`Supprimer les données du ${date} ?`)) return;
-    const data = getStoredData();
-    delete data[date];
-    saveStoredData(data);
-    renderWeek(); renderMonth(); renderYear(); renderAnnualTotal();
-  }
-  function modifyDay(date) {
-    const data = getStoredData();
-    if (!data[date]) return;
-    document.getElementById("date").value = date;
-    document.getElementById("arrival").value = data[date].arrival;
-    document.getElementById("departure").value = data[date].departure;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
 
+  // --- Rendu SEMAINE ---
   function renderWeek() {
     const data = getStoredData();
     const weekDates = getWeekDates();
@@ -95,14 +157,17 @@ window.addEventListener("DOMContentLoaded", function () {
     weekDates.forEach(date => {
       const e = data[date];
       if (e) {
+        const hoursText = (e.arrival && e.departure)
+          ? `${toHourFormat(e.workedHours)} (${spanDelta(e.delta)})`
+          : `<em>incomplet</em>`;
         html += `
           <div class="entry-line">
             <strong>${date} (${getDayName(date)})</strong> :
-            ${e.arrival} → ${e.departure} | ${toHourFormat(e.workedHours)} (${spanDelta(e.delta)})
+            ${e.arrival || "—"} → ${e.departure || "—"} | ${hoursText}
             <button onclick="modifyDay('${date}')">✏️ Modifier</button>
             <button onclick="deleteDay('${date}')">🗑 Supprimer</button>
           </div>`;
-        total += e.workedHours;
+        if (e.arrival && e.departure) total += e.workedHours;
       } else {
         html += `<div class="entry-line"><strong>${date} (${getDayName(date)})</strong> : —</div>`;
       }
@@ -119,6 +184,7 @@ window.addEventListener("DOMContentLoaded", function () {
     if (historyDiv) historyDiv.innerHTML = html;
   }
 
+  // --- Sélecteur Mois ---
   function populateMonthSelect() {
     const data = getStoredData();
     const select = document.getElementById("monthSelect");
@@ -135,6 +201,7 @@ window.addEventListener("DOMContentLoaded", function () {
     if (months.has(current)) select.value = current;
   }
 
+  // --- Graph + vues mois/année (inchangé dans l’esprit) ---
   let myChart;
   function drawChart(labels, below, base, over) {
     const canvas = document.getElementById("chartCanvas");
@@ -174,13 +241,15 @@ window.addEventListener("DOMContentLoaded", function () {
       const wk = getISOWeekKey(date);
       (groups[wk] ||= []).push({ date, ...e });
 
-      monthTotal += e.workedHours; workedDays++;
+      if (e.arrival && e.departure) {
+        monthTotal += e.workedHours; workedDays++;
 
-      chartLabels.push(date);
-      if (e.workedHours < THEO_HOURS_PER_DAY) {
-        below.push(e.workedHours); base.push(0); over.push(0);
-      } else {
-        below.push(0); base.push(THEO_HOURS_PER_DAY); over.push(e.workedHours - THEO_HOURS_PER_DAY);
+        chartLabels.push(date);
+        if (e.workedHours < THEO_HOURS_PER_DAY) {
+          below.push(e.workedHours); base.push(0); over.push(0);
+        } else {
+          below.push(0); base.push(THEO_HOURS_PER_DAY); over.push(e.workedHours - THEO_HOURS_PER_DAY);
+        }
       }
     });
 
@@ -197,17 +266,25 @@ window.addEventListener("DOMContentLoaded", function () {
     if (monthlyHistory) {
       monthlyHistory.innerHTML = Object.keys(groups).sort().map(isoWk => {
         const days = groups[isoWk];
-        const worked = days.reduce((s,d)=>s+d.workedHours,0);
-        const theo   = days.length * THEO_HOURS_PER_DAY;
+
+        // Totaux semaine uniquement sur jours complets
+        const completeDays = days.filter(d => d.arrival && d.departure);
+        const worked = completeDays.reduce((s,d)=>s+d.workedHours,0);
+        const theo   = completeDays.length * THEO_HOURS_PER_DAY;
         const delta  = worked - theo;
 
-        const lines = days.map(d =>
-          `<div class="entry-line">
-             <strong>${d.date} (${getDayName(d.date)})</strong> :
-             ${d.arrival} → ${d.departure} | ${toHourFormat(d.workedHours)} (${spanDelta(d.delta)})
-             <button onclick="modifyDay('${d.date}')">✏️ Modifier</button>
-             <button onclick="deleteDay('${d.date}')">🗑 Supprimer</button>
-           </div>`).join("");
+        const lines = days.map(d => {
+          const hoursText = (d.arrival && d.departure)
+            ? `${toHourFormat(d.workedHours)} (${spanDelta(d.delta)})`
+            : `<em>incomplet</em>`;
+          return `
+            <div class="entry-line">
+              <strong>${d.date} (${getDayName(d.date)})</strong> :
+              ${d.arrival || "—"} → ${d.departure || "—"} | ${hoursText}
+              <button onclick="modifyDay('${d.date}')">✏️ Modifier</button>
+              <button onclick="deleteDay('${d.date}')">🗑 Supprimer</button>
+            </div>`;
+        }).join("");
 
         return `
           <details>
@@ -249,17 +326,23 @@ window.addEventListener("DOMContentLoaded", function () {
 
       const weeksHtml = Object.keys(weeks).sort().map(isoWk => {
         const days = weeks[isoWk];
-        const worked = days.reduce((s,d)=>s+d.workedHours,0);
-        const theo   = days.length * THEO_HOURS_PER_DAY;
+        const completeDays = days.filter(d => d.arrival && d.departure);
+        const worked = completeDays.reduce((s,d)=>s+d.workedHours,0);
+        const theo   = completeDays.length * THEO_HOURS_PER_DAY;
         const delta  = worked - theo;
 
         monthWorked += worked; monthTheo += theo;
 
-        const daysHtml = days.map(d =>
-          `<div class="entry-line">
-             <strong>${d.date} (${getDayName(d.date)})</strong> :
-             ${d.arrival} → ${d.departure} | ${toHourFormat(d.workedHours)} (${spanDelta(d.delta)})
-           </div>`).join("");
+        const daysHtml = days.map(d => {
+          const hoursText = (d.arrival && d.departure)
+            ? `${toHourFormat(d.workedHours)} (${spanDelta(d.delta)})`
+            : `<em>incomplet</em>`;
+          return `
+            <div class="entry-line">
+              <strong>${d.date} (${getDayName(d.date)})</strong> :
+              ${d.arrival || "—"} → ${d.departure || "—"} | ${hoursText}
+            </div>`;
+        }).join("");
 
         return `
           <details>
@@ -286,8 +369,10 @@ window.addEventListener("DOMContentLoaded", function () {
     for (const date in data) {
       const d = new Date(date);
       if (d.getFullYear() === yearNow && d.getDay() >= 1 && d.getDay() <= 5) {
-        total += data[date].workedHours;
-        workdayCount++;
+        if (data[date].arrival && data[date].departure) {
+          total += data[date].workedHours;
+          workdayCount++;
+        }
       }
     }
     const theo = workdayCount * THEO_HOURS_PER_DAY;
@@ -299,13 +384,13 @@ window.addEventListener("DOMContentLoaded", function () {
       `<strong>Écart :</strong> ${spanDelta(delta)}`;
   }
 
-  // CSV
+  // --- CSV ---
   function exportCSV() {
     const data = getStoredData();
     const rows = [["Date","Heure arrivée","Heure départ","Heures travaillées (h déc)","Écart (h déc)"]];
     for (const date of Object.keys(data).sort()) {
       const e = data[date];
-      rows.push([date, e.arrival, e.departure, e.workedHours, e.delta]);
+      rows.push([date, e.arrival || "", e.departure || "", e.workedHours || 0, e.delta || 0]);
     }
     const csv = rows.map(r => r.join(";")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -324,8 +409,12 @@ window.addEventListener("DOMContentLoaded", function () {
       const data = {};
       lines.forEach(line => {
         const [date, arrival, departure, workedHours, delta] = line.split(";");
-        if (date && arrival && departure)
-          data[date] = { arrival, departure, workedHours: parseFloat(workedHours), delta: parseFloat(delta) };
+        if (date) data[date] = {
+          arrival: arrival || "",
+          departure: departure || "",
+          workedHours: parseFloat(workedHours || "0"),
+          delta: parseFloat(delta || "0")
+        };
       });
       saveStoredData(data);
       renderWeek(); populateMonthSelect(); renderMonth(); renderYear(); renderAnnualTotal();
@@ -333,41 +422,30 @@ window.addEventListener("DOMContentLoaded", function () {
     reader.readAsText(file);
   }
 
-  // Sauvegarde JSON simple (utile avant nettoyage du site)
-  function exportJSON(){
+  // --- Expose global ---
+  window.saveHours  = saveHours;
+  window.punchIn    = punchIn;
+  window.punchOut   = punchOut;
+  window.deleteDay  = function(date){
+    if (!confirm(`Supprimer les données du ${date} ?`)) return;
     const data = getStoredData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "peli-tracking-backup.json";
-    a.click();
-  }
-  function importJSON(event){
-    const f = event.target.files[0];
-    if(!f) return;
-    const r = new FileReader();
-    r.onload = e => {
-      try{
-        const data = JSON.parse(e.target.result);
-        saveStoredData(data);
-        renderWeek(); populateMonthSelect(); renderMonth(); renderYear(); renderAnnualTotal();
-        alert("Import JSON OK ✅");
-      }catch(err){ alert("Fichier invalide"); }
-    };
-    r.readAsText(f);
-  }
-
-  // expose
-  window.saveHours = saveHours;
-  window.deleteDay = deleteDay;
-  window.modifyDay = modifyDay;
+    delete data[date];
+    saveStoredData(data);
+    renderWeek(); renderMonth(); renderYear(); renderAnnualTotal();
+  };
+  window.modifyDay  = function(date){
+    const data = getStoredData();
+    if (!data[date]) return;
+    document.getElementById("date").value = date;
+    document.getElementById("arrival").value = data[date].arrival || "";
+    document.getElementById("departure").value = data[date].departure || "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   window.renderMonth = renderMonth;
-  window.exportCSV = exportCSV;
-  window.importCSV = importCSV;
-  window.exportJSON = exportJSON;
-  window.importJSON = importJSON;
+  window.exportCSV   = exportCSV;
+  window.importCSV   = importCSV;
 
-  // init
+  // --- Démarrage ---
   renderWeek();
   populateMonthSelect();
   renderMonth();

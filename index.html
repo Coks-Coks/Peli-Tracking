@@ -5,27 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Peli-Tracking</title>
 
-  <!-- Couleurs navigateur -->
   <meta name="theme-color" content="#E97132" />
-
-  <!-- iOS (au cas où) -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-
-  <!-- Manifest + styles versionnés -->
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=8" />
 </head>
 <body>
   <header>
     <img src="pelichet_logo.jpg" alt="Pelichet Logo" />
     <h1>Peli-Tracking</h1>
-
-    <!-- Bouton "Installer l’application" (affiché automatiquement si possible) -->
-    <button id="installBtn" style="margin-left:auto; display:none;">Installer</button>
   </header>
 
-  <!-- Saisie -->
+  <!-- Boutons rapides de pointage -->
+  <div class="quick-actions">
+    <button class="quick in"  onclick="punchIn()">👉 Pointer arrivée</button>
+    <button class="quick out" onclick="punchOut()">👋 Pointer départ</button>
+  </div>
+
+  <!-- Saisie manuelle (toujours dispo) -->
   <div class="controls">
     <label for="date">Date :</label>
     <input type="date" id="date" />
@@ -73,51 +69,19 @@
     <input type="file" accept=".csv" onchange="importCSV(event)" />
   </section>
 
-  <!-- Chart.js -->
+  <!-- Toast / Récap éphémère -->
+  <div id="flash" class="toast" role="status" aria-live="polite"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js?v=8"></script>
 
-  <!-- App logic -->
-  <script src="script.js?v=6"></script>
-
-  <!-- Enregistrement SW (avec scope explicite GitHub Pages) -->
+  <!-- SW (scope GitHub Pages) -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/Peli-Tracking/sw.js', { scope: '/Peli-Tracking/' })
-        .then(() => console.log('Service Worker enregistré ✅'))
+        .then(() => console.log('SW ok'))
         .catch(console.error);
     }
-
-    // === Forcer l'apparition "Installer l'application" ===
-    let deferredPrompt = null;
-    const installBtn = document.getElementById('installBtn');
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      // Empêche le mini-infobar et garde l'évènement
-      e.preventDefault();
-      deferredPrompt = e;
-      // Montre le bouton
-      installBtn.style.display = 'inline-block';
-    });
-
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      installBtn.disabled = true;
-      try {
-        const outcome = await deferredPrompt.prompt();
-        console.log('Install prompt outcome:', outcome.outcome || outcome);
-      } catch (err) {
-        console.warn(err);
-      } finally {
-        deferredPrompt = null;
-        installBtn.style.display = 'none';
-        installBtn.disabled = false;
-      }
-    });
-
-    window.addEventListener('appinstalled', () => {
-      console.log('PWA installée 🎉');
-      installBtn.style.display = 'none';
-    });
   </script>
 </body>
 </html>
