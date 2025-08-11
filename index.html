@@ -2,30 +2,32 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>Peli-Tracking</title>
 
-  <!-- Manifest + couleur barre -->
-  <link rel="manifest" href="manifest.webmanifest" />
+  <!-- Couleur de barre (Android) -->
   <meta name="theme-color" content="#E97132" />
 
-  <!-- Favicon/icone (aide Android à capter l’icone) -->
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
+  <!-- PWA: Android + iOS -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="./icon-192.png">
 
-  <!-- Styles versionnés -->
-  <link rel="stylesheet" href="style.css?v=11" />
+  <!-- Manifest PWA (relatif pour GitHub Pages /Peli-Tracking/) -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+
+  <!-- Styles (avec version pour casser le cache si besoin) -->
+  <link rel="stylesheet" href="./style.css?v=10" />
 </head>
 <body>
   <header>
-    <img src="pelichet_logo.jpg" alt="Pelichet Logo" />
+    <img src="./pelichet_logo.jpg" alt="Pelichet Logo" />
     <h1>Peli-Tracking</h1>
-
-    <!-- Bouton "Installer" affiché si PWA éligible -->
-    <button id="installBtn" style="margin-left:auto;display:none;">📲 Installer</button>
   </header>
 
-  <!-- Boutons rapides -->
+  <!-- Boutons rapides (arrivée / départ) -->
   <div class="quick-actions">
     <button class="quick in"  onclick="punchIn()">👉 Pointer arrivée</button>
     <button class="quick out" onclick="punchOut()">👋 Pointer départ</button>
@@ -45,122 +47,93 @@
     <button onclick="saveHours()">Enregistrer</button>
   </div>
 
-  <!-- Semaine -->
+  <!-- Petit toast récap -->
+  <div id="flash" class="toast" aria-live="polite"></div>
+
+  <!-- Historique SEMAINE -->
   <section id="historySection">
     <h2>📊 Historique de la semaine</h2>
     <div id="weeklyTotal"></div>
     <div id="history"></div>
   </section>
 
-  <!-- Mois -->
+  <!-- Historique MOIS (groupé par semaines) -->
   <section id="monthSection">
     <h2>📅 Historique du mois</h2>
+
     <label for="monthSelect">Mois :</label>
     <select id="monthSelect" onchange="renderMonth()"></select>
+
     <div id="monthlyTotal"></div>
     <div id="monthlyHistory"></div>
 
-    <div id="totalsAboveChart"></div>
-    <canvas id="chartCanvas" width="900" height="420"></canvas>
-    <div id="totalsBelowChart"></div>
+    <!-- Graphique du mois -->
+    <canvas id="chartCanvas" width="1000" height="420"></canvas>
   </section>
 
-  <!-- Année -->
+  <!-- Historique ANNUEL (groupé par mois → semaines) -->
   <section id="yearSection">
     <h2>🗓️ Historique de l’année</h2>
     <div id="annualTotal"></div>
     <div id="yearHistory"></div>
   </section>
 
-  <!-- Export/Import -->
-  <section style="padding:0 20px 30px;">
+  <!-- CSV -->
+  <section style="padding: 0 20px 30px;">
     <button onclick="exportCSV()">📤 Exporter CSV</button>
     <input type="file" accept=".csv" onchange="importCSV(event)" />
   </section>
 
-  <!-- Toast -->
-  <div id="flash" class="toast" role="status" aria-live="polite"></div>
+  <!-- Bouton d’installation PWA (s’affiche quand possible) -->
+  <div style="padding: 0 20px 30px;">
+    <button id="installPWA" style="display:none;">📥 Installer l’application</button>
+  </div>
 
-  <!-- DIAGNOSTIC PWA -->
-  <section id="pwaDiag" style="margin:18px 20px; padding:12px; border:1px dashed #ccc; border-radius:10px;">
-    <h3>🔧 Diagnostic PWA</h3>
-    <div id="diagContent">Chargement…</div>
-    <button id="resetPwaBtn" style="margin-top:10px;">♻️ Réinitialiser le cache PWA (sans effacer mes heures)</button>
-  </section>
-
-  <!-- Lib chart -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- App -->
-  <script src="script.js?v=11"></script>
+  <!-- Script principal (avec version) -->
+  <script src="./script.js?v=10"></script>
 
-  <!-- Service Worker (scope GitHub Pages) + bouton Installer + Diag -->
+  <!-- Enregistrement du Service Worker + bannière d’installation -->
   <script>
-    // Enregistre le SW sous le bon scope (/Peli-Tracking/)
+    // 1) Service Worker (chemins relatifs pour GitHub Pages)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/Peli-Tracking/sw.js', { scope: '/Peli-Tracking/' })
-        .then(r => console.log('SW OK scope =', r.scope))
-        .catch(console.error);
+      navigator.serviceWorker.register('./sw.js', { scope: './' })
+        .then(reg => console.log('Service Worker enregistré ✅', reg.scope))
+        .catch(err => console.error('Échec enregistrement SW ❌', err));
     }
 
-    // Bouton d’installation forcé via beforeinstallprompt
+    // 2) Bouton "Installer l'application" (beforeinstallprompt)
     let deferredPrompt = null;
-    const installBtn = document.getElementById('installBtn');
-
-    // Masquer si déjà en standalone
-    if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
-      installBtn.style.display = 'none';
-    }
+    const installBtn = document.getElementById('installPWA');
 
     window.addEventListener('beforeinstallprompt', (e) => {
+      // Chrome envoie cet event si manifest OK + SW OK + conditions remplies
       e.preventDefault();
       deferredPrompt = e;
-      installBtn.style.display = 'inline-block';
+      if (installBtn) installBtn.style.display = 'inline-block';
     });
 
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      const p = deferredPrompt;
-      deferredPrompt = null;
-      await p.prompt();
-      installBtn.style.display='none';
-    });
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        installBtn.disabled = true;
+        deferredPrompt.prompt();
+        try {
+          const choice = await deferredPrompt.userChoice;
+          console.log('Résultat installation :', choice.outcome);
+        } finally {
+          deferredPrompt = null;
+          installBtn.style.display = 'none';
+          installBtn.disabled = false;
+        }
+      });
+    }
 
     window.addEventListener('appinstalled', () => {
-      installBtn.style.display='none';
       console.log('PWA installée 🎉');
-    });
-
-    // === DIAGNOSTIC PWA ===
-    async function diag() {
-      const hasSW = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
-      const modeStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-      const manifestResp = await fetch('manifest.webmanifest', {cache:'no-cache'}).then(r => ({ok:r.ok, type:r.headers.get('content-type')})).catch(()=>({ok:false,type:'-'}));
-      const diagDiv = document.getElementById('diagContent');
-      diagDiv.innerHTML = `
-        URL: <code>${location.href}</code><br>
-        Mode d’affichage: <b>${modeStandalone ? 'standalone (OK, pas de barre URL si lancé depuis icône)' : 'navigateur'}</b><br>
-        Service Worker contrôleur: <b>${hasSW ? 'OUI' : 'NON'}</b><br>
-        Manifest chargé: <b>${manifestResp.ok ? 'OUI' : 'NON'}</b> (type=${manifestResp.type || 'n/a'})<br>
-        beforeinstallprompt capturé: <b>${deferredPrompt ? 'OUI' : 'NON'}</b><br>
-      `;
-    }
-    diag();
-
-    // Bouton reset PWA (n’efface PAS localStorage)
-    document.getElementById('resetPwaBtn').addEventListener('click', async ()=>{
-      try {
-        if ('serviceWorker' in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map(r => r.unregister()));
-        }
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map(k => caches.delete(k)));
-        }
-        alert('Caches PWA et SW réinitialisés. Recharge la page 2 fois, puis réinstalle.');
-        location.reload(true);
-      } catch(e){ alert('Reset erreur: ' + e); }
+      if (installBtn) installBtn.style.display = 'none';
     });
   </script>
 </body>
