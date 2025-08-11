@@ -5,84 +5,81 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Peli-Tracking</title>
 
-  <!-- Couleurs navigateur (Android) -->
+  <!-- Couleur barre Android -->
   <meta name="theme-color" content="#E97132" />
 
-  <!-- PWA manifest -->
+  <!-- Manifest PWA -->
   <link rel="manifest" href="manifest.webmanifest" />
 
-  <!-- Styles (avec version pour éviter le cache) -->
-  <link rel="stylesheet" href="style.css?v=5" />
+  <!-- Styles (versionnés) -->
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <header>
-    <!-- Logo d’entête (fichier du repo) -->
     <img src="pelichet_logo.jpg" alt="Pelichet Logo" />
     <h1>Peli-Tracking</h1>
   </header>
 
-  <!-- Saisie -->
   <div class="controls">
     <label for="date">Date :</label>
     <input type="date" id="date" />
-
     <label for="arrival">Heure d’arrivée :</label>
     <input type="time" id="arrival" />
-
     <label for="departure">Heure de départ :</label>
     <input type="time" id="departure" />
-
     <button onclick="saveHours()">Enregistrer</button>
   </div>
 
-  <!-- Historique SEMAINE (détail par jour) -->
   <section id="historySection">
     <h2>📊 Historique de la semaine</h2>
     <div id="weeklyTotal"></div>
     <div id="history"></div>
   </section>
 
-  <!-- Historique MOIS (groupé par semaines) -->
   <section id="monthSection">
     <h2>📅 Historique du mois</h2>
-
     <label for="monthSelect">Mois :</label>
     <select id="monthSelect" onchange="renderMonth()"></select>
-
     <div id="monthlyTotal"></div>
     <div id="monthlyHistory"></div>
 
-    <!-- Graphique du mois -->
     <div id="totalsAboveChart"></div>
     <canvas id="chartCanvas" width="900" height="420"></canvas>
     <div id="totalsBelowChart"></div>
   </section>
 
-  <!-- Historique ANNEE (groupé par mois → semaines) -->
   <section id="yearSection">
     <h2>🗓️ Historique de l’année</h2>
     <div id="annualTotal"></div>
     <div id="yearHistory"></div>
   </section>
 
-  <!-- CSV -->
   <section style="padding: 0 20px 30px;">
     <button onclick="exportCSV()">📤 Exporter CSV</button>
     <input type="file" accept=".csv" onchange="importCSV(event)" />
   </section>
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js?v=6"></script>
 
-  <!-- Script (avec version pour éviter le cache) -->
-  <script src="script.js?v=5"></script>
-
-  <!-- Enregistrement du Service Worker -->
+  <!-- ENREGISTREMENT SW avec chemin GitHub Pages -->
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js')
-        .then(() => console.log('Service Worker enregistré'));
+      navigator.serviceWorker.register('/Peli-Tracking/sw.js', { scope: '/Peli-Tracking/' })
+        .then(() => console.log('Service Worker enregistré ✅'))
+        .catch(console.error);
     }
   </script>
+
+  <!-- (Optionnel) petit badge pour vérifier le mode -->
+  <!--
+  <script>
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    const b = document.createElement('div');
+    b.textContent = 'Mode: ' + (isStandalone ? 'standalone/fullscreen' : 'browser tab');
+    b.style.cssText='position:fixed;right:12px;bottom:12px;background:#000;color:#fff;padding:6px 10px;border-radius:8px;font:12px Arial;opacity:.7;z-index:9999';
+    document.body.appendChild(b);
+  </script>
+  -->
 </body>
 </html>
