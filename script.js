@@ -1,3 +1,4 @@
+// script.js
 window.addEventListener("DOMContentLoaded", function () {
   // --- Constantes ---
   const THEO_HOURS_PER_DAY = 8.5;            // 8h30 en décimal
@@ -9,8 +10,9 @@ window.addEventListener("DOMContentLoaded", function () {
 
   // --- Format heures h:mm & écart signé ---
   const toHourFormat = (value) => {
-    const h = Math.floor(Math.abs(value));
-    const m = Math.round((Math.abs(value) - h) * 60);
+    const abs = Math.abs(value);
+    const h = Math.floor(abs);
+    const m = Math.round((abs - h) * 60);
     return `${h}h${String(m).padStart(2, "0")}`;
   };
   const formatSignedHours = (v) => (v >= 0 ? "+" : "-") + toHourFormat(v);
@@ -26,6 +28,7 @@ window.addEventListener("DOMContentLoaded", function () {
   };
   const getDayName = (dateStr) =>
     ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][new Date(dateStr).getDay()];
+
   function getWeekDates() {
     const now = new Date();
     const monday = new Date(now);
@@ -38,6 +41,8 @@ window.addEventListener("DOMContentLoaded", function () {
     }
     return dates;
   }
+
+  // ISO week key "YYYY-Www"
   function getISOWeekKey(dateStr) {
     const d = new Date(dateStr);
     d.setHours(0,0,0,0);
@@ -136,30 +141,35 @@ window.addEventListener("DOMContentLoaded", function () {
       const diffHours = (end - start) / 1000 / 60 / 60;
       workedHours = Number((diffHours - 1).toFixed(3)); // -1h pause
       delta = Number((workedHours - THEO_HOURS_PER_DAY).toFixed(3));
-    } else {
-      workedHours = prev?.workedHours ?? 0;
-      delta = prev?.delta ?? 0;
     }
 
-    data[date] = { arrival: arrival || prev?.arrival || "", departure: departure || prev?.departure || "", workedHours, delta };
+    data[date] = {
+      arrival: arrival || prev?.arrival || "",
+      departure: departure || prev?.departure || "",
+      workedHours,
+      delta
+    };
     saveStoredData(data);
 
     renderWeek(); populateMonthSelect(); renderMonth(); renderYear(); renderAnnualTotal();
   }
 
-  // --- Rendu SEMAINE ---
+  // --- Rendu SEMAINE (corrigé: cible hebdo = nb jours COMPLETS saisis * 8h30) ---
   function renderWeek() {
     const data = getStoredData();
     const weekDates = getWeekDates();
     let html = "";
-    let total = 0;
+    let workedTotal = 0;
+    let completedDays = 0; // jours avec arrivée + départ
 
     weekDates.forEach(date => {
       const e = data[date];
       if (e) {
-        const hoursText = (e.arrival && e.departure)
+        const isComplete = !!(e.arrival && e.departure);
+        const hoursText = isComplete
           ? `${toHourFormat(e.workedHours)} (${spanDelta(e.delta)})`
           : `<em>incomplet</em>`;
+
         html += `
           <div class="entry-line">
             <strong>${date} (${getDayName(date)})</strong> :
@@ -167,17 +177,24 @@ window.addEventListener("DOMContentLoaded", function () {
             <button onclick="modifyDay('${date}')">✏️ Modifier</button>
             <button onclick="deleteDay('${date}')">🗑 Supprimer</button>
           </div>`;
-        if (e.arrival && e.departure) total += e.workedHours;
+
+        if (isComplete) {
+          workedTotal += e.workedHours;
+          completedDays++;
+        }
       } else {
         html += `<div class="entry-line"><strong>${date} (${getDayName(date)})</strong> : —</div>`;
       }
     });
 
-    const weeklyDelta = total - THEO_WEEKLY_TOTAL;
+    // Nouvelle cible hebdo dynamique
+    const theoThisWeek = completedDays * THEO_HOURS_PER_DAY;
+    const weeklyDelta = workedTotal - theoThisWeek;
+
     const weeklyTotalDiv = document.getElementById("weeklyTotal");
     if (weeklyTotalDiv) {
       weeklyTotalDiv.innerHTML =
-        `<strong>Total semaine :</strong> ${toHourFormat(total)} sur ${toHourFormat(THEO_WEEKLY_TOTAL)}<br>` +
+        `<strong>Total semaine :</strong> ${toHourFormat(workedTotal)} sur ${toHourFormat(theoThisWeek)}<br>` +
         `<strong>Écart :</strong> ${spanDelta(weeklyDelta)}`;
     }
     const historyDiv = document.getElementById("history");
@@ -201,7 +218,7 @@ window.addEventListener("DOMContentLoaded", function () {
     if (months.has(current)) select.value = current;
   }
 
-  // --- Graph + vues mois/année (complet) ---
+  // --- Graph + vues mois/année ---
   let myChart;
   function drawChart(labels, below, base, over) {
     const canvas = document.getElementById("chartCanvas");
@@ -267,7 +284,6 @@ window.addEventListener("DOMContentLoaded", function () {
       monthlyHistory.innerHTML = Object.keys(groups).sort().map(isoWk => {
         const days = groups[isoWk];
 
-        // Totaux semaine uniquement sur jours complets
         const completeDays = days.filter(d => d.arrival && d.departure);
         const worked = completeDays.reduce((s,d)=>s+d.workedHours,0);
         const theo   = completeDays.length * THEO_HOURS_PER_DAY;
