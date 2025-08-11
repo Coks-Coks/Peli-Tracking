@@ -1,11 +1,11 @@
 // Chemin de base pour GitHub Pages sous /Peli-Tracking/
 const BASE = '/Peli-Tracking/';
-const CACHE_NAME = 'peli-tracking-v1';
+const CACHE_NAME = 'peli-tracking-v3';
 const ASSETS = [
   BASE,
   BASE + 'index.html',
-  BASE + 'style.css',
-  BASE + 'script.js',
+  BASE + 'style.css?v=3',
+  BASE + 'script.js?v=3',
   BASE + 'manifest.webmanifest',
   BASE + 'icon-192.png',
   BASE + 'icon-512.png'
@@ -27,6 +27,6 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then(resp => resp || fetch(event.request))
+    caches.match(event.request).then(resp => resp || fetch(event.request))
   );
 });
