@@ -201,7 +201,7 @@ window.addEventListener("DOMContentLoaded", function () {
     if (months.has(current)) select.value = current;
   }
 
-  // --- Graph + vues mois/année (inchangé dans l’esprit) ---
+  // --- Graph + vues mois/année (complet) ---
   let myChart;
   function drawChart(labels, below, base, over) {
     const canvas = document.getElementById("chartCanvas");

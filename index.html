@@ -2,24 +2,23 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Peli-Tracking</title>
 
+  <!-- Manifest + couleur barre -->
+  <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#E97132" />
 
-  <!-- IMPORTANT: manifest présent -->
-  <link rel="manifest" href="manifest.webmanifest" />
-
-  <!-- CSS versionné pour casser le cache -->
-  <link rel="stylesheet" href="style.css?v=9" />
+  <!-- Styles versionnés -->
+  <link rel="stylesheet" href="style.css?v=10" />
 </head>
 <body>
   <header>
     <img src="pelichet_logo.jpg" alt="Pelichet Logo" />
     <h1>Peli-Tracking</h1>
 
-    <!-- Bouton Install (s’affiche si Chrome déclenche beforeinstallprompt) -->
-    <button id="installBtn" style="margin-left:auto;display:none;">Installer</button>
+    <!-- Bouton "Installer" affiché si PWA éligible -->
+    <button id="installBtn" style="margin-left:auto;display:none;">📲 Installer</button>
   </header>
 
   <!-- Boutons rapides -->
@@ -32,62 +31,74 @@
   <div class="controls">
     <label for="date">Date :</label>
     <input type="date" id="date" />
+
     <label for="arrival">Heure d’arrivée :</label>
     <input type="time" id="arrival" />
+
     <label for="departure">Heure de départ :</label>
     <input type="time" id="departure" />
+
     <button onclick="saveHours()">Enregistrer</button>
   </div>
 
-  <!-- Historiques + graph (inchangés) -->
+  <!-- Semaine -->
   <section id="historySection">
     <h2>📊 Historique de la semaine</h2>
     <div id="weeklyTotal"></div>
     <div id="history"></div>
   </section>
 
+  <!-- Mois -->
   <section id="monthSection">
     <h2>📅 Historique du mois</h2>
     <label for="monthSelect">Mois :</label>
     <select id="monthSelect" onchange="renderMonth()"></select>
     <div id="monthlyTotal"></div>
     <div id="monthlyHistory"></div>
+
     <div id="totalsAboveChart"></div>
     <canvas id="chartCanvas" width="900" height="420"></canvas>
     <div id="totalsBelowChart"></div>
   </section>
 
+  <!-- Année -->
   <section id="yearSection">
     <h2>🗓️ Historique de l’année</h2>
     <div id="annualTotal"></div>
     <div id="yearHistory"></div>
   </section>
 
+  <!-- Export/Import -->
   <section style="padding:0 20px 30px;">
     <button onclick="exportCSV()">📤 Exporter CSV</button>
     <input type="file" accept=".csv" onchange="importCSV(event)" />
   </section>
 
+  <!-- Toast -->
   <div id="flash" class="toast" role="status" aria-live="polite"></div>
 
+  <!-- Lib chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="script.js?v=9"></script>
 
-  <!-- IMPORTANT: SW enregistré avec le BON scope GitHub Pages -->
+  <!-- App -->
+  <script src="script.js?v=10"></script>
+
+  <!-- Service Worker (scope GitHub Pages) + bouton Installer -->
   <script>
+    // Enregistre le SW sous le bon scope (/Peli-Tracking/)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/Peli-Tracking/sw.js', { scope: '/Peli-Tracking/' })
         .then(r => console.log('SW OK scope =', r.scope))
         .catch(console.error);
     }
 
-    // Forcer l’apparition d’un bouton “Installer”
-    let deferredPrompt=null;
-    const installBtn=document.getElementById('installBtn');
+    // Bouton d’installation forcé via beforeinstallprompt
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('installBtn');
 
     // Masquer si déjà en standalone
     if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
-      installBtn.style.display='none';
+      installBtn.style.display = 'none';
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
